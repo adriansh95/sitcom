@@ -170,7 +170,7 @@ def calculate_drift_bias(configDict, **kwargs):
     results = np.zeros((nTrials, 2))
     
     for iTrial in range(nTrials):
-        arcImg, pointingCenter = make_arc_image(configDict)
+        arcImg, pointingCenter = make_arc_image(configDict, **kwargs)
         pcIdx = xy_image_coord_transform(pointingCenter, arcImg)
         brightPxs = make_threshold_image(arcImg, configDict)
         naive_center = find_boresight_naive(brightPxs, **kwargs)
