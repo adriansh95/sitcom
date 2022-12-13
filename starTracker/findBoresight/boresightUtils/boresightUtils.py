@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import random
 
-from scipy.optimize import differential_evolution
+from scipy.optimize import differential_evolution, minimize
 from scipy.stats import binned_statistic
 from scipy.signal import fftconvolve
 from scipy.ndimage import gaussian_filter
@@ -150,12 +150,20 @@ def find_boresight_symmetric(im0, im1, **kwargs):
     return result
 
 def find_boresight_naive(im, **kwargs):
-    dr = kwargs.get('dr', 1)
+    dr = kwargs.get('dr', .1)
+    tol = kwargs.get('tol', 0.01)
+    doPowell = kwargs.get('doPowell', False)
     height, width = im.shape
-    arguments = (im, dr)
-    optimizerResult = differential_evolution(score_center, ((0, height), (0, width)), 
-                                             args=arguments)
-    return optimizerResult.x
+    args = (im, dr)
+    result = differential_evolution(score_center, ((0, height), (0, width)), 
+                                      args=args, tol=tol)
+    if doPowell:
+        lowBound = result.x - 3
+        upBound = result.x + 3
+        bounds = ((lowBound[0], upBound[0]), (lowBound[1], upBound[1]))
+        result = minimize(score_center, result.x, args=args, method='Powell',
+                          bounds=bounds)
+    return result.x
 
 def measure_drift(im0, im1):
     autoCorr = fftconvolve(im0, im0[::-1,::-1], mode='same')
