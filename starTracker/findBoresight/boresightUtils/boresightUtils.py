@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import random
+import os
 
 from scipy.optimize import differential_evolution, minimize
 from scipy.stats import binned_statistic
@@ -189,9 +190,9 @@ def calculate_drift_bias(configDict, **kwargs):
 def plot_arc_image(img, boresight=None, saveFig=False, figsDir='', figName='arc_image.png'):
     fig, ax = plt.subplots(figsize=(20, 20))
     ax.imshow(img, cmap='gray')#, interpolation='none')
-    x, y = xy_image_coord_transform(boresight, img, inverse=True)
     
     if boresight is not None:
+        x, y = boresight[1], boresight[0]
         ax.scatter(x, y, marker='x', c='r')
     
     if saveFig:
