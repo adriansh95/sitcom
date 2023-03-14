@@ -189,7 +189,7 @@ def calculate_drift_bias(configDict, **kwargs):
 
 def plot_arc_image(img, boresight=None, saveFig=False, figsDir='', figName='arc_image.png'):
     fig, ax = plt.subplots(figsize=(20, 20))
-    ax.imshow(img, cmap='gray')#, interpolation='none')
+    ax.imshow(img, cmap='gray')
     
     if boresight is not None:
         x, y = boresight[1], boresight[0]
