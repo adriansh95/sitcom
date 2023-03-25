@@ -220,7 +220,7 @@ def find_streaks(fname, **kwargs):
 
     return streak.streaks
 
-def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs)
+def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs):
     nSelect = kwargs.get("nSelect", 100)
 
     with fits.open(filename) as hdu:
