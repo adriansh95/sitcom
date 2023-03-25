@@ -244,4 +244,4 @@ def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs):
     display(img, ax=ax1, fig=fig)
     fig.tight_layout()
     ax1.set_title("Star Trails")
-    fig.savefig(f"{fname}_streaks.png" dpi=120)
+    fig.savefig(f"{fname}_streaks.png", dpi=120)
