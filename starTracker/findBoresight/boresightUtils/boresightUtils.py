@@ -1,8 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import random
 import os
 
+from astride import Streak
+from astropy.io import fits
 from scipy.optimize import differential_evolution, minimize
 from scipy.stats import binned_statistic
 from scipy.signal import fftconvolve
@@ -200,3 +203,45 @@ def plot_arc_image(img, boresight=None, saveFig=False, figsDir='', figName='arc_
         fig.savefig(filename)
 
     plt.show()
+
+def find_streaks(fname, **kwargs):
+    contour_threshold = kwargs.get("contour_threshold", 1.5)
+    area_cut = kwargs.get("area_cut", 25)
+    radius_dev_cut = kwargs.get("radius_dev_cut", 0.5)
+    remove_bkg = kwargs.get("remove_bkg", "map")
+
+    # Read a fits image and create a Streak instance.
+    streak = Streak(fname, contour_threshold=contour_threshold,
+                    area_cut=area_cut, radius_dev_cut=radius_dev_cut,
+                    remove_bkg=remove_bkg) 
+
+    # Detect streaks.
+    streak.detect()
+
+    return streak.streaks
+
+def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs)
+    nSelect = kwargs.get("nSelect", 100)
+
+    with fits.open(filename) as hdu:
+        img = hdu[0].data
+
+    edges = find_streaks(inFileName, **kwargs)
+
+    df = pd.DataFrame(edges)
+    df = df.sort_values(by='perimeter', ascending=False)
+    selection = df.index.to_numpy()[:]
+
+    fig, ax1 = plt.subplots(1, 1, figsize=(12, 8), sharex='all', sharey='all')
+
+    # Plot all contours.
+    for n in selection[:nSelect]:
+        edge = edges[n]
+        ax1.plot(edge['x'], edge['y'], mfc='o', mec='r', ms=5)
+        ax1.text(edge['x'][0], edge['y'][1],
+                '%d' % (edge['index']), color='b', fontsize=15)
+
+    display(img, ax=ax1, fig=fig)
+    fig.tight_layout()
+    ax1.set_title("Star Trails")
+    fig.savefig(f"{fname}_streaks.png" dpi=120)
