@@ -7,8 +7,9 @@ import os
 from astride import Streak
 from astropy.io import fits
 from scipy.optimize import differential_evolution, minimize
-from scipy.stats import binned_statistic
+from scipy.stats import binned_statistic, sigmaclip
 from scipy.signal import fftconvolve
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.ndimage import gaussian_filter
 
 def gaussian_blur_image(arcImg, configDict):
@@ -195,7 +196,7 @@ def plot_arc_image(img, boresight=None, saveFig=False, figsDir='', figName='arc_
     ax.imshow(img, cmap='gray')
     
     if boresight is not None:
-        x, y = boresight[1], boresight[0]
+        x, y = boresight[0], boresight[1]
         ax.scatter(x, y, marker='x', c='r')
     
     if saveFig:
@@ -222,8 +223,9 @@ def find_streaks(fname, **kwargs):
 
 def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs):
     nSelect = kwargs.get("nSelect", 100)
+    nStd = kwargs.get("nStd", 5)
 
-    with fits.open(filename) as hdu:
+    with fits.open(inFileName) as hdu:
         img = hdu[0].data
 
     edges = find_streaks(inFileName, **kwargs)
@@ -232,16 +234,28 @@ def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs):
     df = df.sort_values(by='perimeter', ascending=False)
     selection = df.index.to_numpy()[:]
 
-    fig, ax1 = plt.subplots(1, 1, figsize=(12, 8), sharex='all', sharey='all')
+    fig, ax = plt.subplots(1, 1, figsize=(12, 8), sharex='all', sharey='all')
 
     # Plot all contours.
     for n in selection[:nSelect]:
         edge = edges[n]
-        ax1.plot(edge['x'], edge['y'], mfc='o', mec='r', ms=5)
-        ax1.text(edge['x'][0], edge['y'][1],
+        ax.plot(edge['x'], edge['y'], mfc='o', mec='r', ms=5)
+        ax.text(edge['x'][0], edge['y'][1],
                 '%d' % (edge['index']), color='b', fontsize=15)
 
-    display(img, ax=ax1, fig=fig)
+    imgClip, low, high = sigmaclip(img)
+    mean = imgClip.mean()
+    std = imgClip.std()
+    im = ax.imshow(img, vmin=mean-nStd*std, vmax=mean+nStd*std, cmap='gray', origin='lower')
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax, orientation='vertical')
+
     fig.tight_layout()
-    ax1.set_title("Star Trails")
-    fig.savefig(f"{fname}_streaks.png", dpi=120)
+    ax.set_title("Star Trails")
+
+    if saveFig:
+        figName = os.path.join(outPath, f"{fname}_streaks.png")
+        fig.savefig(figName, dpi=120)
+
+    plt.show()
