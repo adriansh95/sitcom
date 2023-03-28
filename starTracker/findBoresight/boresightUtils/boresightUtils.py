@@ -11,6 +11,7 @@ from scipy.stats import binned_statistic, sigmaclip
 from scipy.signal import fftconvolve
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy.ndimage import gaussian_filter
+from circle_fit import taubinSVD
 
 def gaussian_blur_image(arcImg, configDict):
     gaussianBlurSigma = configDict['gaussianBlurSigma']
@@ -38,9 +39,11 @@ def xy_image_coord_transform(r, img, inverse=False):
     # Works with arrays of shape (2,) and (2, N)
     height, width = img.shape
     
+    # RowCol to XY
     if inverse:
         rPrime0 = r[1]
         rPrime1 = height - r[0]
+    # XY to RowCol
     else:
         rPrime0 = height - r[1]
         rPrime1 = r[0]
@@ -221,16 +224,14 @@ def find_streaks(fname, **kwargs):
 
     return streak.streaks
 
-def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs):
+def plot_streaks(inFileName, streaks, saveFig=False, outPath="./", **kwargs):
     nSelect = kwargs.get("nSelect", 100)
     nStd = kwargs.get("nStd", 5)
 
     with fits.open(inFileName) as hdu:
         img = hdu[0].data
 
-    edges = find_streaks(inFileName, **kwargs)
-
-    df = pd.DataFrame(edges)
+    df = pd.DataFrame(streaks)
     df = df.sort_values(by='perimeter', ascending=False)
     selection = df.index.to_numpy()[:]
 
@@ -238,10 +239,10 @@ def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs):
 
     # Plot all contours.
     for n in selection[:nSelect]:
-        edge = edges[n]
-        ax.plot(edge['x'], edge['y'], mfc='o', mec='r', ms=5)
-        ax.text(edge['x'][0], edge['y'][1],
-                '%d' % (edge['index']), color='b', fontsize=15)
+        streak = streaks[n]
+        ax.plot(streak['x'], streak['y'], mfc='o', mec='r', ms=5)
+        ax.text(streak['x'][0], streak['y'][1],
+                '%d' % (streak['index']), color='b', fontsize=15)
 
     imgClip, low, high = sigmaclip(img)
     mean = imgClip.mean()
@@ -259,3 +260,25 @@ def plot_streaks(inFileName, saveFig=False, outPath="./", **kwargs):
         fig.savefig(figName, dpi=120)
 
     plt.show()
+
+def findStreaksCenter(streaks):
+    out = np.empty((len(streaks), 4), dtype=float)
+
+    x = np.empty((0,), dtype=float)
+    y = np.empty((0,), dtype=float)
+    c = np.empty((0,), dtype=int)
+    
+    for ix in range(len(streaks)):
+        xi, yi = streaks[ix]['x'].astype(int), streaks[ix]['y'].astype(int)
+        points = np.vstack([xi, yi]).T
+        xc, yc, r, sigma = taubinSVD(points)
+        out[ix] = np.array([xc, yc, r, sigma])
+        
+        x = np.append(x, xi)
+        y = np.append(y, yi)
+        c = np.append(c, ix*np.ones_like(xi))
+
+    xc_mean, yc_mean, r0m, sigma = np.nanmedian(out, axis=0)
+    result = {'x': xc_mean, 'y': yc_mean}
+
+    return result
